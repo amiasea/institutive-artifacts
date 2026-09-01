@@ -8,29 +8,49 @@ permissions:
   packages: write
 
 jobs:
-  release:
-    name: Release Artifacts
+  validate-release:
+    name: Validate Release
     runs-on: ubuntu-latest
 
-    env:
-      REGISTRY: ghcr.io
-      IMAGE_PREFIX: ghcr.io/amiasea/institutive
-      RELEASE_TAG: ${{ github.ref_name }}
+    outputs:
+      release-tag: ${{ steps.validate.outputs.release-tag }}
 
     steps:
       - name: Check out release
         uses: actions/checkout@v7.0.1
 
       - name: Validate release tag
+        id: validate
         shell: bash
         run: |
           set -euo pipefail
+
+          RELEASE_TAG="${GITHUB_REF_NAME}"
 
           if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]]; then
             echo "Invalid release tag: $RELEASE_TAG"
             echo "Expected v<major>.<minor>.<patch> or v<major>.<minor>.<patch>-rc.<number>."
             exit 1
           fi
+
+          echo "release-tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+
+  api-image:
+    name: API Image
+    needs: validate-release
+    runs-on: ubuntu-latest
+
+    outputs:
+      digest: ${{ steps.image.outputs.digest }}
+
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_PREFIX: ghcr.io/amiasea/institutive
+      RELEASE_TAG: ${{ needs.validate-release.outputs.release-tag }}
+
+    steps:
+      - name: Check out release
+        uses: actions/checkout@v7.0.1
 
       - name: Set up .NET
         uses: actions/setup-dotnet@v6
@@ -40,21 +60,55 @@ jobs:
       - name: Restore API
         run: dotnet restore api/Amiasea.API.csproj
 
-      - name: Restore Data Migrations
-        run: dotnet restore data/Amiasea.Data.Migrations/Amiasea.Data.Migrations.csproj
-
-      - name: Restore Webhook Adapter
-        run: dotnet restore functions/Amiasea.Functions.csproj
-
-      - name: Restore Worker
-        run: dotnet restore worker/Amiasea.Worker.csproj
-
       - name: Publish API
         run: |
           dotnet publish api/Amiasea.API.csproj \
             --configuration Release \
             --no-restore \
             --output api/publish
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push API image
+        id: image
+        uses: docker/build-push-action@v7
+        with:
+          context: ./api
+          file: ./api/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}/api:${{ env.RELEASE_TAG }}
+
+  data-migrations-image:
+    name: Data Migrations Image
+    needs: validate-release
+    runs-on: ubuntu-latest
+
+    outputs:
+      digest: ${{ steps.image.outputs.digest }}
+
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_PREFIX: ghcr.io/amiasea/institutive
+      RELEASE_TAG: ${{ needs.validate-release.outputs.release-tag }}
+
+    steps:
+      - name: Check out release
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore Data Migrations
+        run: dotnet restore data/Amiasea.Data.Migrations/Amiasea.Data.Migrations.csproj
 
       - name: Publish Data Migrations
         run: |
@@ -63,12 +117,98 @@ jobs:
             --no-restore \
             --output data/publish
 
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Data Migrations image
+        id: image
+        uses: docker/build-push-action@v7
+        with:
+          context: ./data
+          file: ./data/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}/data:${{ env.RELEASE_TAG }}
+
+  webhook-adapter-image:
+    name: Webhook Adapter Image
+    needs: validate-release
+    runs-on: ubuntu-latest
+
+    outputs:
+      digest: ${{ steps.image.outputs.digest }}
+
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_PREFIX: ghcr.io/amiasea/institutive
+      RELEASE_TAG: ${{ needs.validate-release.outputs.release-tag }}
+
+    steps:
+      - name: Check out release
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore Webhook Adapter
+        run: dotnet restore functions/Amiasea.Functions.csproj
+
       - name: Publish Webhook Adapter
         run: |
           dotnet publish functions/Amiasea.Functions.csproj \
             --configuration Release \
             --no-restore \
             --output functions/publish
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Webhook Adapter image
+        id: image
+        uses: docker/build-push-action@v7
+        with:
+          context: ./functions
+          file: ./functions/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}/webhook-adapter:${{ env.RELEASE_TAG }}
+
+  worker-image:
+    name: Worker Image
+    needs: validate-release
+    runs-on: ubuntu-latest
+
+    outputs:
+      digest: ${{ steps.image.outputs.digest }}
+
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_PREFIX: ghcr.io/amiasea/institutive
+      RELEASE_TAG: ${{ needs.validate-release.outputs.release-tag }}
+
+    steps:
+      - name: Check out release
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore Worker
+        run: dotnet restore worker/Amiasea.Worker.csproj
 
       - name: Publish Worker
         run: |
@@ -84,41 +224,8 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push API image
-        id: api
-        uses: docker/build-push-action@v7
-        with:
-          context: ./api
-          file: ./api/Dockerfile
-          platforms: linux/amd64
-          push: true
-          tags: |
-            ${{ env.IMAGE_PREFIX }}/api:${{ env.RELEASE_TAG }}
-
-      - name: Build and push Data Migrations image
-        id: data
-        uses: docker/build-push-action@v7
-        with:
-          context: ./data
-          file: ./data/Dockerfile
-          platforms: linux/amd64
-          push: true
-          tags: |
-            ${{ env.IMAGE_PREFIX }}/data:${{ env.RELEASE_TAG }}
-
-      - name: Build and push Webhook Adapter image
-        id: webhook_adapter
-        uses: docker/build-push-action@v7
-        with:
-          context: ./functions
-          file: ./functions/Dockerfile
-          platforms: linux/amd64
-          push: true
-          tags: |
-            ${{ env.IMAGE_PREFIX }}/webhook-adapter:${{ env.RELEASE_TAG }}
-
       - name: Build and push Worker image
-        id: worker
+        id: image
         uses: docker/build-push-action@v7
         with:
           context: ./worker
@@ -128,13 +235,27 @@ jobs:
           tags: |
             ${{ env.IMAGE_PREFIX }}/worker:${{ env.RELEASE_TAG }}
 
+  delivery-contract:
+    name: Create Delivery Contract
+    needs:
+      - validate-release
+      - api-image
+      - data-migrations-image
+      - webhook-adapter-image
+      - worker-image
+    runs-on: ubuntu-latest
+
+    env:
+      IMAGE_PREFIX: ghcr.io/amiasea/institutive
+      RELEASE_TAG: ${{ needs.validate-release.outputs.release-tag }}
+      API_DIGEST: ${{ needs.api-image.outputs.digest }}
+      DATA_DIGEST: ${{ needs.data-migrations-image.outputs.digest }}
+      WEBHOOK_ADAPTER_DIGEST: ${{ needs.webhook-adapter-image.outputs.digest }}
+      WORKER_DIGEST: ${{ needs.worker-image.outputs.digest }}
+
+    steps:
       - name: Create delivery contract
         shell: bash
-        env:
-          API_DIGEST: ${{ steps.api.outputs.digest }}
-          DATA_DIGEST: ${{ steps.data.outputs.digest }}
-          WEBHOOK_ADAPTER_DIGEST: ${{ steps.webhook_adapter.outputs.digest }}
-          WORKER_DIGEST: ${{ steps.worker.outputs.digest }}
         run: |
           set -euo pipefail
 
@@ -148,9 +269,32 @@ jobs:
           }
           EOF
 
+      - name: Upload delivery contract
+        uses: actions/upload-artifact@v4
+        with:
+          name: delivery-contract
+          path: app-artifacts-delivery-contract.json
+
+  github-release:
+    name: Create GitHub Release
+    needs:
+      - validate-release
+      - delivery-contract
+    runs-on: ubuntu-latest
+
+    env:
+      RELEASE_TAG: ${{ needs.validate-release.outputs.release-tag }}
+
+    steps:
+      - name: Download delivery contract
+        uses: actions/download-artifact@v5
+        with:
+          name: delivery-contract
+
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
         run: |
           set -euo pipefail
 
