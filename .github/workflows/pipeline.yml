@@ -1,0 +1,29 @@
+name: Artifact Pipeline
+
+on:
+  pull_request:
+    branches:
+      - development
+      - main
+
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: Continuous Integration
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    name: Release Artifacts
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs:
+      - ci
+    uses: ./.github/workflows/release.yml
+    permissions:
+      contents: write
+      packages: write

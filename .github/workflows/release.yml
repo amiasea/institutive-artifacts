@@ -1,9 +1,7 @@
 name: Build and Release Artifacts
 
 on:
-  push:
-    tags:
-      - "v*"
+  workflow_call:
 
 permissions:
   contents: write
@@ -11,6 +9,7 @@ permissions:
 
 jobs:
   release:
+    name: Release Artifacts
     runs-on: ubuntu-latest
 
     env:
@@ -33,26 +32,10 @@ jobs:
             exit 1
           fi
 
-      - name: Determine prerelease
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          if [[ "$RELEASE_TAG" =~ -rc\.[0-9]+$ ]]; then
-            echo "IS_PRERELEASE=true" >> "$GITHUB_ENV"
-          else
-            echo "IS_PRERELEASE=false" >> "$GITHUB_ENV"
-          fi
-
       - name: Set up .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: "10.0.x"
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
-      # Restore
 
       - name: Restore API
         run: dotnet restore api/Amiasea.API.csproj
@@ -60,27 +43,11 @@ jobs:
       - name: Restore Data Migrations
         run: dotnet restore data/Amiasea.Data.Migrations/Amiasea.Data.Migrations.csproj
 
-      - name: Restore Functions
+      - name: Restore Webhook Adapter
         run: dotnet restore functions/Amiasea.Functions.csproj
 
       - name: Restore Worker
         run: dotnet restore worker/Amiasea.Worker.csproj
-
-      # Unit tests
-
-      - name: Test API
-        run: dotnet test api/Amiasea.API.csproj --no-restore
-
-      - name: Test Data Migrations
-        run: dotnet test data/Amiasea.Data.Migrations/Amiasea.Data.Migrations.csproj --no-restore
-
-      - name: Test Functions
-        run: dotnet test functions/Amiasea.Functions.csproj --no-restore
-
-      - name: Test Worker
-        run: dotnet test worker/Amiasea.Worker.csproj --no-restore
-
-      # Publish
 
       - name: Publish API
         run: |
@@ -96,7 +63,7 @@ jobs:
             --no-restore \
             --output data/publish
 
-      - name: Publish Functions
+      - name: Publish Webhook Adapter
         run: |
           dotnet publish functions/Amiasea.Functions.csproj \
             --configuration Release \
@@ -110,20 +77,16 @@ jobs:
             --no-restore \
             --output worker/publish
 
-      # GHCR
-
       - name: Log in to GHCR
-        uses: docker/login-action@v4.6.0
+        uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Container images
-
       - name: Build and push API image
         id: api
-        uses: docker/build-push-action@v7.3.0
+        uses: docker/build-push-action@v7
         with:
           context: ./api
           file: ./api/Dockerfile
@@ -132,9 +95,9 @@ jobs:
           tags: |
             ${{ env.IMAGE_PREFIX }}/api:${{ env.RELEASE_TAG }}
 
-      - name: Build and push Data image
+      - name: Build and push Data Migrations image
         id: data
-        uses: docker/build-push-action@v7.3.0
+        uses: docker/build-push-action@v7
         with:
           context: ./data
           file: ./data/Dockerfile
@@ -145,7 +108,7 @@ jobs:
 
       - name: Build and push Webhook Adapter image
         id: webhook_adapter
-        uses: docker/build-push-action@v7.3.0
+        uses: docker/build-push-action@v7
         with:
           context: ./functions
           file: ./functions/Dockerfile
@@ -156,7 +119,7 @@ jobs:
 
       - name: Build and push Worker image
         id: worker
-        uses: docker/build-push-action@v7.3.0
+        uses: docker/build-push-action@v7
         with:
           context: ./worker
           file: ./worker/Dockerfile
@@ -164,11 +127,6 @@ jobs:
           push: true
           tags: |
             ${{ env.IMAGE_PREFIX }}/worker:${{ env.RELEASE_TAG }}
-
-      # Delivery contract
-      #
-      # There are five delivery roles but four physical images.
-      # migrations_user_image intentionally uses the Data image.
 
       - name: Create delivery contract
         shell: bash
@@ -190,15 +148,13 @@ jobs:
           }
           EOF
 
-      # GitHub Release
-
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
 
-          if [[ "$IS_PRERELEASE" == "true" ]]; then
+          if [[ "$RELEASE_TAG" =~ -rc\.[0-9]+$ ]]; then
             gh release create "$RELEASE_TAG" \
               app-artifacts-delivery-contract.json \
               --repo "$GITHUB_REPOSITORY" \

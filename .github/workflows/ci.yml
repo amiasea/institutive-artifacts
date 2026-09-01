@@ -1,15 +1,7 @@
 name: Continuous Integration
 
 on:
-  push:
-    branches:
-      - development
-      - main
-
-  pull_request:
-    branches:
-      - development
-      - main
+  workflow_call:
 
 permissions:
   contents: read
@@ -33,6 +25,13 @@ jobs:
 
       - name: Run API unit tests
         run: dotnet test api/Amiasea.API.csproj --no-restore
+
+      - name: Publish API
+        run: |
+          dotnet publish api/Amiasea.API.csproj \
+            --configuration Release \
+            --no-restore \
+            --output api/publish
 
       - name: Build API container
         uses: docker/build-push-action@v7
@@ -60,6 +59,13 @@ jobs:
       - name: Run Data Migrations unit tests
         run: dotnet test data/Amiasea.Data.Migrations/Amiasea.Data.Migrations.csproj --no-restore
 
+      - name: Publish Data Migrations
+        run: |
+          dotnet publish data/Amiasea.Data.Migrations/Amiasea.Data.Migrations.csproj \
+            --configuration Release \
+            --no-restore \
+            --output data/publish
+
       - name: Build Data container
         uses: docker/build-push-action@v7
         with:
@@ -86,6 +92,13 @@ jobs:
       - name: Run Webhook Adapter unit tests
         run: dotnet test functions/Amiasea.Functions.csproj --no-restore
 
+      - name: Publish Webhook Adapter
+        run: |
+          dotnet publish functions/Amiasea.Functions.csproj \
+            --configuration Release \
+            --no-restore \
+            --output functions/publish
+
       - name: Build Webhook Adapter container
         uses: docker/build-push-action@v7
         with:
@@ -111,6 +124,13 @@ jobs:
 
       - name: Run Worker unit tests
         run: dotnet test worker/Amiasea.Worker.csproj --no-restore
+
+      - name: Publish Worker
+        run: |
+          dotnet publish worker/Amiasea.Worker.csproj \
+            --configuration Release \
+            --no-restore \
+            --output worker/publish
 
       - name: Build Worker container
         uses: docker/build-push-action@v7
