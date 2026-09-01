@@ -1,0 +1,6 @@
+@amiasea.api_HostAddress = http://localhost:5045
+
+GET {{amiasea.api_HostAddress}}/webhooks/terraform/
+Accept: application/json
+
+###

@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="api/Amiasea.API.csproj" />
+  <Project Path="worker/Amiasea.Worker.csproj" />
+  <Project Path="data/Amiasea.Data.Migrations/Amiasea.Data.Migrations.csproj" />
+  <Project Path="functions/Amiasea.Functions.csproj" />
+  <Project Path="data/Amiasea.Data.Entity/Amiasea.Data.Entity.csproj" />
+</Solution>

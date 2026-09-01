@@ -1,0 +1,66 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Visual Studio Code
+.vscode/
+
+# Rider / JetBrains
+.idea/
+*.sln.iml
+
+# NuGet
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+!packages/build/
+!packages/repositories.config
+
+# Test results
+TestResults/
+[Tt]est[Rr]esult*/
+*.trx
+*.coverage
+*.coveragexml
+
+# ASP.NET Core
+wwwroot/lib/
+
+# Generated files
+Generated/
+*.generated.cs
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment / local configuration
+appsettings.Local.json
+appsettings.*.Local.json
+
+# User-specific launch settings
+Properties/launchSettings.json
+
+# Docker local overrides
+docker-compose.override.yml
+
+# Publish output
+publish/
+[Pp]ublish/
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
