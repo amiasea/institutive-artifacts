@@ -1,10 +1,10 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 COPY . .
-RUN dotnet restore ./Amiasea.Data.Migration/Amiasea.Data.Migration.csproj
+RUN dotnet restore ./Amiasea.Data.Migrations/Amiasea.Data.Migrations.csproj
 RUN dotnet ef migrations bundle \
-    --project ./Amiasea.Data.Migration/Amiasea.Data.Migration.csproj \
-    --startup-project ./Amiasea.Data.Migration/Amiasea.Data.Migration.csproj \
+    --project ./Amiasea.Data.Migrations/Amiasea.Data.Migrations.csproj \
+    --startup-project ./Amiasea.Data.Migrations/Amiasea.Data.Migrations.csproj \
     --configuration Release \
     --self-contained \
     --target-runtime linux-x64 \
