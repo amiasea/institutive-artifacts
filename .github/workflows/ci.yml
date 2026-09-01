@@ -15,7 +15,8 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  api-tests:
+    name: API Tests
     runs-on: ubuntu-latest
 
     steps:
@@ -27,30 +28,65 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
-      # Restore
-
       - name: Restore API
         run: dotnet restore api/Amiasea.API.csproj
+
+      - name: Run API unit tests
+        run: dotnet test api/Amiasea.API.csproj --no-restore
+
+  data-migrations-tests:
+    name: Data Migrations Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.x"
 
       - name: Restore Data Migrations
         run: dotnet restore data/Amiasea.Data.Migrations/Amiasea.Data.Migrations.csproj
 
-      - name: Restore Functions
+      - name: Run Data Migrations unit tests
+        run: dotnet test data/Amiasea.Data.Migrations/Amiasea.Data.Migrations.csproj --no-restore
+
+  webhook-adapter-tests:
+    name: Webhook Adapter Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore Webhook Adapter
         run: dotnet restore functions/Amiasea.Functions.csproj
+
+      - name: Run Webhook Adapter unit tests
+        run: dotnet test functions/Amiasea.Functions.csproj --no-restore
+
+  worker-tests:
+    name: Worker Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.x"
 
       - name: Restore Worker
         run: dotnet restore worker/Amiasea.Worker.csproj
 
-      # Unit tests
-
-      - name: Test API
-        run: dotnet test api/Amiasea.API.csproj --no-restore
-
-      - name: Test Data Migrations
-        run: dotnet test data/Amiasea.Data.Migrations/Amiasea.Data.Migrations.csproj --no-restore
-
-      - name: Test Functions
-        run: dotnet test functions/Amiasea.Functions.csproj --no-restore
-
-      - name: Test Worker
+      - name: Run Worker unit tests
         run: dotnet test worker/Amiasea.Worker.csproj --no-restore
