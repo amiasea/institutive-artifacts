@@ -34,6 +34,13 @@ jobs:
       - name: Run API unit tests
         run: dotnet test api/Amiasea.API.csproj --no-restore
 
+      - name: Build API container
+        uses: docker/build-push-action@v7
+        with:
+          context: ./api
+          file: ./api/Dockerfile
+          platforms: linux/amd64
+
   data-migrations-tests:
     name: Data Migrations Tests
     runs-on: ubuntu-latest
@@ -52,6 +59,13 @@ jobs:
 
       - name: Run Data Migrations unit tests
         run: dotnet test data/Amiasea.Data.Migrations/Amiasea.Data.Migrations.csproj --no-restore
+
+      - name: Build Data container
+        uses: docker/build-push-action@v7
+        with:
+          context: ./data
+          file: ./data/Dockerfile
+          platforms: linux/amd64
 
   webhook-adapter-tests:
     name: Webhook Adapter Tests
@@ -72,6 +86,13 @@ jobs:
       - name: Run Webhook Adapter unit tests
         run: dotnet test functions/Amiasea.Functions.csproj --no-restore
 
+      - name: Build Webhook Adapter container
+        uses: docker/build-push-action@v7
+        with:
+          context: ./functions
+          file: ./functions/Dockerfile
+          platforms: linux/amd64
+
   worker-tests:
     name: Worker Tests
     runs-on: ubuntu-latest
@@ -90,3 +111,10 @@ jobs:
 
       - name: Run Worker unit tests
         run: dotnet test worker/Amiasea.Worker.csproj --no-restore
+
+      - name: Build Worker container
+        uses: docker/build-push-action@v7
+        with:
+          context: ./worker
+          file: ./worker/Dockerfile
+          platforms: linux/amd64
