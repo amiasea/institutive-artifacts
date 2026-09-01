@@ -32,8 +32,8 @@ jobs:
       - name: Restore API
         run: dotnet restore api/Amiasea.API.csproj
 
-      - name: Restore Data Migration
-        run: dotnet restore data/Amiasea.Data.Migration/Amiasea.Data.Migration.csproj
+      - name: Restore Data Migrations
+        run: dotnet restore data/Amiasea.Data.Migrations/Amiasea.Data.Migrations.csproj
 
       - name: Restore Functions
         run: dotnet restore functions/Amiasea.Functions.csproj
@@ -46,8 +46,8 @@ jobs:
       - name: Test API
         run: dotnet test api/Amiasea.API.csproj --no-restore
 
-      - name: Test Data Migration
-        run: dotnet test data/Amiasea.Data.Migration/Amiasea.Data.Migration.csproj --no-restore
+      - name: Test Data Migrations
+        run: dotnet test data/Amiasea.Data.Migrations/Amiasea.Data.Migrations.csproj --no-restore
 
       - name: Test Functions
         run: dotnet test functions/Amiasea.Functions.csproj --no-restore
