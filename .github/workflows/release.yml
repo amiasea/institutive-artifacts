@@ -235,6 +235,41 @@ jobs:
           tags: |
             ${{ env.IMAGE_PREFIX }}/worker:${{ env.RELEASE_TAG }}
 
+  jwt-signer-image:
+    name: JWT Signer Image
+    needs: validate-release
+    runs-on: ubuntu-latest
+
+    outputs:
+      digest: ${{ steps.image.outputs.digest }}
+
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_PREFIX: ghcr.io/amiasea/institutive
+      RELEASE_TAG: ${{ needs.validate-release.outputs.release-tag }}
+
+    steps:
+      - name: Check out release
+        uses: actions/checkout@v7.0.1
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push JWT Signer image
+        id: image
+        uses: docker/build-push-action@v7
+        with:
+          context: ./utility/jwt-signer
+          file: ./utility/jwt-signer/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}/jwt-signer:${{ env.RELEASE_TAG }}
+
   delivery-contract:
     name: Create Delivery Contract
     needs:
@@ -243,6 +278,7 @@ jobs:
       - data-migrations-image
       - webhook-adapter-image
       - worker-image
+      - jwt-signer-image
     runs-on: ubuntu-latest
 
     env:
@@ -252,6 +288,7 @@ jobs:
       DATA_DIGEST: ${{ needs.data-migrations-image.outputs.digest }}
       WEBHOOK_ADAPTER_DIGEST: ${{ needs.webhook-adapter-image.outputs.digest }}
       WORKER_DIGEST: ${{ needs.worker-image.outputs.digest }}
+      JWT_SIGNER_DIGEST: ${{ needs.jwt-signer-image.outputs.digest }}
 
     steps:
       - name: Create delivery contract
@@ -265,7 +302,8 @@ jobs:
             "data_migrations_image": "${IMAGE_PREFIX}/data@${DATA_DIGEST}",
             "webhook_adapter_image": "${IMAGE_PREFIX}/webhook-adapter@${WEBHOOK_ADAPTER_DIGEST}",
             "worker_image": "${IMAGE_PREFIX}/worker@${WORKER_DIGEST}",
-            "migrations_user_image": "${IMAGE_PREFIX}/data@${DATA_DIGEST}"
+            "migrations_user_image": "${IMAGE_PREFIX}/data@${DATA_DIGEST}",
+            "jwt_signer_image": "${IMAGE_PREFIX}/jwt-signer@${JWT_SIGNER_DIGEST}"
           }
           EOF
 
